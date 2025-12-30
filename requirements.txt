@@ -1,2 +1,3 @@
+# 音声機能なし、安全版
 discord.py==2.3.2
 python-dotenv==1.0.0
