@@ -2,22 +2,24 @@ import random
 import discord
 from discord.ext import commands
 from datetime import date
+import os
+import asyncio
 
-# =====================
+# -----------------------
 # Bot基本設定
-# =====================
+# -----------------------
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# =====================
+# -----------------------
 # 1日1回制限用データ
-# =====================
+# -----------------------
 last_tarot_date = {}
 
-# =====================
+# -----------------------
 # タロットカード（大アルカナ・正逆）
-# =====================
+# -----------------------
 tarot_cards = [
     ("愚者", "正位置", "新しい始まり、自由、可能性"),
     ("愚者", "逆位置", "無計画、迷走"),
@@ -51,9 +53,9 @@ tarot_cards = [
     ("世界", "逆位置", "未完成、足踏み"),
 ]
 
-# =====================
-# Bot人格（完全固定）
-# =====================
+# -----------------------
+# Bot人格（固定）
+# -----------------------
 persona = {
     "name": "占い師・ヤヨイ＝ユーティライネン",
     "self_pronoun": "ボク",
@@ -79,23 +81,23 @@ persona = {
     ]
 }
 
-# =====================
+# -----------------------
 # 起動時
-# =====================
+# -----------------------
 @bot.event
 async def on_ready():
     print(f"起動しました：{bot.user}")
 
-# =====================
+# -----------------------
 # tarotコマンド
-# =====================
+# -----------------------
 @bot.command()
 async def tarot(ctx, *, question: str = None):
     user_id = ctx.author.id
     today = date.today()
     name = ctx.author.display_name
 
-    # --- 1日1回制限 ---
+    # 1日1回制限
     if user_id in last_tarot_date and last_tarot_date[user_id] == today:
         line = random.choice(persona["limit"]).format(name=name)
         await ctx.send(line)
@@ -103,25 +105,25 @@ async def tarot(ctx, *, question: str = None):
 
     last_tarot_date[user_id] = today
 
-    # --- カード選択 ---
+    # カード選択
     card_name, position, meaning = random.choice(tarot_cards)
-
     opening = random.choice(persona["opening"])
     ending = random.choice(persona["ending"]).format(name=name)
 
-    # --- 質問文処理 ---
+    # 質問文処理
     if question:
         question = question.rstrip("？?")
         question_line = f"{persona['self_pronoun']}は「{question}」について視た。"
     else:
         question_line = f"{persona['self_pronoun']}は、今の流れを視た。"
 
-    # --- 正逆で語り分岐 ---
+    # 正逆で語り分岐
     if position == "正位置":
         body = random.choice(persona["body_positive"])
     else:
         body = random.choice(persona["body_negative"])
 
+    # メッセージ送信
     message = (
         f"{opening}\n"
         f"{question_line}\n"
@@ -131,10 +133,15 @@ async def tarot(ctx, *, question: str = None):
         f"{ending}"
     )
 
+    # 送信前に少し待機して429回避
+    await asyncio.sleep(1)
     await ctx.send(message)
 
-# =====================
+# -----------------------
 # Bot起動
-# =====================
-import os
-bot.run(os.getenv("DISCORD_TOKEN"))
+# -----------------------
+TOKEN = os.getenv("DISCORD_TOKEN")
+if not TOKEN:
+    print("ERROR: DISCORD_TOKEN が設定されていません！")
+else:
+    bot.run(TOKEN)
