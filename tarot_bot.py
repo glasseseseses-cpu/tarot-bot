@@ -138,3 +138,16 @@ async def tarot(ctx, *, question: str = None):
 # Bot起動
 # =====================
 bot.run(os.getenv("DISCORD_TOKEN"))
+
+import threading
+import http.server
+import socketserver
+import os
+
+def dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", port), handler) as httpd:
+        httpd.serve_forever()
+
+threading.Thread(target=dummy_server, daemon=True).start()
