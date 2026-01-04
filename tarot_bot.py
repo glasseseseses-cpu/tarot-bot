@@ -3,6 +3,20 @@ import discord
 from discord.ext import commands
 from datetime import date
 import os
+import threading
+import http.server
+import socketserver
+
+# =====================
+# ダミーWebサーバー（Render用）
+# =====================
+def dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", port), handler) as httpd:
+        httpd.serve_forever()
+
+threading.Thread(target=dummy_server, daemon=True).start()
 
 # =====================
 # Bot基本設定
@@ -106,32 +120,25 @@ async def tarot(ctx, *, question: str = None):
     today = date.today()
     name = ctx.author.display_name
 
-    # --- 1日1回制限 ---
     if user_id in last_tarot_date and last_tarot_date[user_id] == today:
-        line = random.choice(persona["limit"]).format(name=name)
-        await ctx.send(line)
+        await ctx.send(random.choice(persona["limit"]).format(name=name))
         return
 
     last_tarot_date[user_id] = today
 
-    # --- カード選択 ---
     card_name, position, meaning = random.choice(tarot_cards)
-
     opening = random.choice(persona["opening"])
     ending = random.choice(persona["ending"]).format(name=name)
 
-    # --- 質問文処理 ---
     if question:
         question = question.rstrip("？?")
         question_line = f"{persona['self_pronoun']}は「{question}」について視た。"
     else:
         question_line = f"{persona['self_pronoun']}は、今の流れを視た。"
 
-    # --- 正逆で語り分岐 ---
-    if position == "正位置":
-        body = random.choice(persona["body_positive"])
-    else:
-        body = random.choice(persona["body_negative"])
+    body = random.choice(
+        persona["body_positive"] if position == "正位置" else persona["body_negative"]
+    )
 
     message = (
         f"{opening}\n"
@@ -145,19 +152,6 @@ async def tarot(ctx, *, question: str = None):
     await ctx.send(message)
 
 # =====================
-# Bot起動
+# Bot起動（1回だけ）
 # =====================
 bot.run(os.getenv("DISCORD_TOKEN"))
-
-import threading
-import http.server
-import socketserver
-import os
-
-def dummy_server():
-    port = int(os.environ.get("PORT", 10000))
-    handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", port), handler) as httpd:
-        httpd.serve_forever()
-
-threading.Thread(target=dummy_server, daemon=True).start()
